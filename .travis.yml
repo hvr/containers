@@ -7,12 +7,12 @@ env:
  # no package for earlier cabal versions in the PPA
  - GHCVER=7.4.2 CABALVER=1.16
  - GHCVER=7.6.3 CABALVER=1.16
- - GHCVER=7.8.2 CABALVER=1.18
- - GHCVER=head  CABALVER=1.20
+ - GHCVER=7.8.3 CABALVER=1.18
+ - GHCVER=head  CABALVER=head
 
 matrix:
   allow_failures:
-   - env: GHCVER=head  CABALVER=1.20
+   - env: GHCVER=head  CABALVER=head
 
 # Note: the distinction between `before_install` and `install` is not
 #       important.
@@ -22,20 +22,21 @@ before_install:
  - travis_retry sudo apt-get install cabal-install-$CABALVER ghc-$GHCVER
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
  - cabal --version
+ - if [ "$GHCVER" = "head" ]; then export CABAL_XFLAGS="--allow-newer=base"; fi
 
 install:
  - travis_retry cabal update
- - cabal install --only-dependencies
+ - cabal install $CABAL_XFLAGS --only-dependencies
  # we need to install the test-suite deps manually as the cabal solver would
  # otherwise complaing about cyclic deps
- - cabal install 'test-framework >= 0.3.3' 'test-framework-quickcheck2 >= 0.2.9' 'QuickCheck >= 2.4.0.1' 'ChasingBottoms' 'HUnit' 'test-framework-hunit'
+ - cabal install $CABAL_XFLAGS 'test-framework >= 0.3.3' 'test-framework-quickcheck2 >= 0.2.9' 'QuickCheck >= 2.4.0.1' 'ChasingBottoms' 'HUnit' 'test-framework-hunit'
 
 # Here starts the actual work to be performed for the package under
 # test; any command which exits with a non-zero exit code causes the
 # build to fail.
 script:
  # -v2 provides useful information for debugging
- - cabal configure -v2 --enable-tests
+ - cabal configure -v2 --enable-tests $CABAL_XFLAGS
 
  # this builds all libraries and executables
  # (including tests/benchmarks)
@@ -49,7 +50,7 @@ script:
  - export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
    cd dist/;
    if [ -f "$SRC_TGZ" ]; then
-      cabal install --force-reinstalls "$SRC_TGZ";
+      cabal install $CABAL_XFLAGS --force-reinstalls "$SRC_TGZ";
    else
       echo "expected '$SRC_TGZ' not found";
       exit 1;
